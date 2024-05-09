@@ -1,0 +1,184 @@
+
+initiate_blog <- function() {
+  library(shiny)
+
+  ui <- fluidPage(
+    titlePanel("Pharmaverse Blog Skeleton"),
+    mainPanel(
+      textInput("post_name", "Post Name:  (needs to be character vector of length 1)"),
+      textInput("author", "Author(s): (one or more authors are permitted sepated by comma)"),
+      dateInput("post_date", "Post Date:", value = Sys.Date()),
+      textAreaInput("description", "Description:"),
+      selectInput("cover_image", "Cover Image:",
+                  choices = c("pharmaverse", "other_image1", "other_image2")),
+      checkboxGroupInput("tags", "Tags:",
+                         choices = c("submission", "ADaMs", "conferences",
+                                     "admiral", "xportr", "metatools", "metacore")),
+      actionButton("create_button", "Create Post"),
+      textOutput("created_message")
+    )
+  )
+
+  server <- function(input, output, session) {
+    replace <- function(text, key = c("TITLE", "AUTHOR", "DESCR", "DATE", "TAG", "IMG", "SLUG"), replacement) {
+      rlang::arg_match(key)
+
+      if (key == "IMG") {
+        replacement <- paste(replacement, ".png", sep = "")
+      }
+
+      # Switch to what key actually looks like
+      key_with <- paste("[", key, "]", sep = "")
+
+      # Decorate replacement
+      replacement <- ifelse(
+        key == "AUTHOR", paste("  - name: ", replacement, sep = ""),
+        ifelse(key == "TAG", paste(replacement, collapse = ", "),
+               paste('"', replacement, '"', sep = "")
+        )
+      )
+
+
+      if (key == "AUTHOR") {
+        where <- str_which(
+          string = text,
+          pattern = fixed(key_with)
+        )
+        text <- append(text, values = replacement, after = where)
+        text <- text[-where]
+      } else {
+        text <- stringr::str_replace(
+          string = text,
+          pattern = fixed(key_with),
+          replacement = replacement
+        )
+      }
+      return(text)
+    }
+
+
+    create_post <- function(post_name,
+                            author = Sys.info()["user"],
+                            post_date = format(Sys.time(), "%Y-%m-%d"),
+                            description = "",
+                            cover_image = "pharmaverse",
+                            tags = c(
+                              "metadata",
+                              "submission",
+                              "qc",
+                              "ADaMs",
+                              "SDTMs",
+                              "community",
+                              "conferences",
+                              "admiral",
+                              "roak",
+                              "xportr",
+                              "metatools",
+                              "metacore",
+                              "displays",
+                              "falcon",
+                              "Shiny",
+                              "TLG"
+                            )) {
+      path_to_img <- "media"
+      available_images <- list.files(path_to_img) %>% tools::file_path_sans_ext()
+
+      # Assert inputs
+      stopifnot(is.character(description),
+                is.character(cover_image),
+                is.character(post_name),
+                is.character(post_date),
+                is.character(author),
+                length(cover_image) > 0,  # Ensure cover_image is not empty
+                length(tags) > 0)  # Ensure tags is not empty
+
+      rlang::arg_match(multiple = FALSE, cover_image, values = available_images)
+      if (length(tags) > 0) {
+        rlang::arg_match(multiple = TRUE, tags)
+      }
+
+      # check if date is correctly formatted
+      if (is.na(as.Date(post_date, format = "%Y-%m-%d"))) {
+        stop("`post_date` has to be in the format '%Y-%m-%d', e.g. '2023-06-15'")
+      }
+
+      # Prepare values
+      snake_name <- gsub(" ", "_", tolower(gsub("(.)([A-Z])", "\\1 \\2", post_name)))
+      short_name <- paste(post_date, snake_name, sep = "_")
+
+      if (short_name != short_name %>% stringr::str_trunc(30)) {
+        message("For the folder creation:")
+        message(paste(short_name, "has been shortened to", short_name %>% stringr::str_trunc(30), sep = " ") %>% str_wrap())
+        short_name <- paste(short_name %>% stringr::str_trunc(30), sep = " ")
+      }
+
+      # Create dir for blogpost
+      new_dir <- paste("posts", short_name, sep = "/")
+      if (dir.exists(new_dir)) {
+        stop(paste("a directory called:", new_dir, "already exists. Please work within that directory or chose a different `post_name` argument") %>%
+               str_wrap())
+      }
+      dir.create(new_dir)
+
+      # Read template
+      lines_read <- readLines("inst/template/template.txt")
+
+      result <- lines_read %>%
+        replace(key = "TITLE", replacement = post_name) %>%
+        replace(key = "AUTHOR", replacement = author) %>%
+        replace(key = "DESCR", replacement = description) %>%
+        replace(key = "DATE", replacement = post_date) %>%
+        replace(key = "IMG", replacement = cover_image) %>%
+        replace(key = "TAG", replacement = paste(tags, collapse = ", "))%>%  # Concatenate tags with comma
+        replace(key = "SLUG", replacement = short_name)
+
+      # Write new .qmd file
+      writeLines(result, con = paste(file.path(new_dir, snake_name), ".qmd", sep = ""))
+      file.copy("inst/template/appendix.R", paste(file.path(new_dir, "appendix"), ".R", sep = ""))
+      image_name <- paste(cover_image, ".png", sep = "")
+      file.copy(from = file.path(path_to_img, image_name), to = file.path(new_dir, image_name))
+
+      message("Congrats, you just created a new Blog Post skeleton. Find it here: ")
+      message(new_dir)
+    }
+
+    observeEvent(input$create_button, {
+      # Validate inputs before calling create_post function
+      if (nchar(input$post_name) == 0) {
+        showNotification("Please provide a Post Name.", type = "warning")
+        return(NULL)
+      }
+      if (length(input$tags) == 0) {
+        showNotification("Please select at least one Tag.", type = "warning")
+        return(NULL)
+      }
+      # Call create_post function
+      create_post(
+        post_name = input$post_name,
+        post_date = format(input$post_date, "%Y-%m-%d"),
+        description = input$description,
+        author = input$author,
+        cover_image = input$cover_image,
+        tags = input$tags
+      )
+      output$created_message <- renderText({
+        "Congrats, you just created a new Blog Post skeleton."
+      })
+
+      observeEvent(input$create_button, {
+        timeText <- paste("Happy Blogging!!")
+        rstudioapi::insertText(timeText)
+        stopApp()
+      })
+    })
+  }
+
+  #viewer <-dialogViewer(300)
+  runGadget(shinyApp(ui, server), viewer= dialogViewer("Blogging Info"))
+
+}
+
+run_blog_skeleton <- function(){
+   initiate_blog()
+}
+
