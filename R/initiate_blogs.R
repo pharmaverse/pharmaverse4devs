@@ -1,16 +1,16 @@
-
+#' Addin Application to set up required pharmaverse blog folders/files
+#'
+#' @export
+#'
 initiate_blog <- function() {
-  library(shiny)
-
   ui <- fluidPage(
     titlePanel("Pharmaverse Blog Skeleton"),
     mainPanel(
       textInput("post_name", "Post Name:  (needs to be character vector of length 1)"),
-      textInput("author", "Author(s): (one or more authors are permitted sepated by comma)"),
+      textInput("author", "Author(s): (one or more authors are permitted separated by comma)"),
       dateInput("post_date", "Post Date:", value = Sys.Date()),
       textAreaInput("description", "Description:"),
-      selectInput("cover_image", "Cover Image:",
-                  choices = c("pharmaverse", "other_image1", "other_image2")),
+      fileInput("cover_image_upload", "Upload Cover Image:", multiple = FALSE, accept = c('.png', '.jpg')),  # Allow multiple images
       checkboxGroupInput("tags", "Tags:",
                          choices = c("submission", "ADaMs", "conferences",
                                      "admiral", "xportr", "metatools", "metacore")),
@@ -20,6 +20,8 @@ initiate_blog <- function() {
   )
 
   server <- function(input, output, session) {
+    # Replace key with replacement
+    # This is a helping function for `create_post()`
     replace <- function(text, key = c("TITLE", "AUTHOR", "DESCR", "DATE", "TAG", "IMG", "SLUG"), replacement) {
       rlang::arg_match(key)
 
@@ -56,48 +58,42 @@ initiate_blog <- function() {
       return(text)
     }
 
-
+    # Creating the actual files
     create_post <- function(post_name,
                             author = Sys.info()["user"],
                             post_date = format(Sys.time(), "%Y-%m-%d"),
                             description = "",
-                            cover_image = "pharmaverse",
+                            cover_images = "pharmaverse",  # Initialize as default cover image
                             tags = c(
-                              "metadata",
-                              "submission",
-                              "qc",
-                              "ADaMs",
-                              "SDTMs",
-                              "community",
-                              "conferences",
-                              "admiral",
-                              "roak",
-                              "xportr",
-                              "metatools",
-                              "metacore",
-                              "displays",
-                              "falcon",
-                              "Shiny",
-                              "TLG"
+                              "metadata", "submission", "qc", "ADaMs",
+                              "SDTMs", "community", "conferences", "admiral",
+                              "roak", "xportr", "metatools", "metacore",
+                              "displays", "falcon", "Shiny", "TLG"
                             )) {
       path_to_img <- "media"
-      available_images <- list.files(path_to_img) %>% tools::file_path_sans_ext()
+      available_images <- list.files(path_to_img, full.names = TRUE)
 
       # Assert inputs
       stopifnot(is.character(description),
-                is.character(cover_image),
                 is.character(post_name),
                 is.character(post_date),
                 is.character(author),
-                length(cover_image) > 0,  # Ensure cover_image is not empty
                 length(tags) > 0)  # Ensure tags is not empty
 
-      rlang::arg_match(multiple = FALSE, cover_image, values = available_images)
-      if (length(tags) > 0) {
-        rlang::arg_match(multiple = TRUE, tags)
+      # Check if cover_images is not empty
+      if (length(cover_images) == 0) {
+        stop("Please select at least one cover image.")
       }
 
-      # check if date is correctly formatted
+      # Check if selected cover images exist in available images
+      cover_images <- cover_images[cover_images %in% available_images]
+
+      # Check if cover images are selected correctly
+      if (length(cover_images) == 0) {
+        stop("None of the selected cover images exist in the 'media' folder.")
+      }
+
+      # Check if date is correctly formatted
       if (is.na(as.Date(post_date, format = "%Y-%m-%d"))) {
         stop("`post_date` has to be in the format '%Y-%m-%d', e.g. '2023-06-15'")
       }
@@ -115,7 +111,7 @@ initiate_blog <- function() {
       # Create dir for blogpost
       new_dir <- paste("posts", short_name, sep = "/")
       if (dir.exists(new_dir)) {
-        stop(paste("a directory called:", new_dir, "already exists. Please work within that directory or chose a different `post_name` argument") %>%
+        stop(paste("A directory called:", new_dir, "already exists. Please work within that directory or choose a different `post_name` argument.") %>%
                str_wrap())
       }
       dir.create(new_dir)
@@ -128,19 +124,23 @@ initiate_blog <- function() {
         replace(key = "AUTHOR", replacement = author) %>%
         replace(key = "DESCR", replacement = description) %>%
         replace(key = "DATE", replacement = post_date) %>%
-        replace(key = "IMG", replacement = cover_image) %>%
+        replace(key = "IMG", replacement = paste(basename(cover_images), collapse = ", ")) %>%
         replace(key = "TAG", replacement = paste(tags, collapse = ", "))%>%  # Concatenate tags with comma
         replace(key = "SLUG", replacement = short_name)
 
       # Write new .qmd file
       writeLines(result, con = paste(file.path(new_dir, snake_name), ".qmd", sep = ""))
       file.copy("inst/template/appendix.R", paste(file.path(new_dir, "appendix"), ".R", sep = ""))
-      image_name <- paste(cover_image, ".png", sep = "")
-      file.copy(from = file.path(path_to_img, image_name), to = file.path(new_dir, image_name))
 
-      message("Congrats, you just created a new Blog Post skeleton. Find it here: ")
+      # Copy selected cover images to the new directory
+      if (!is.null(cover_images)) {
+        file.copy(from = cover_images, to = new_dir)
+      }
+
+      message("Congratulations! You have created a new Blog Post skeleton. Find it here:")
       message(new_dir)
     }
+
 
     observeEvent(input$create_button, {
       # Validate inputs before calling create_post function
@@ -152,13 +152,23 @@ initiate_blog <- function() {
         showNotification("Please select at least one Tag.", type = "warning")
         return(NULL)
       }
+
+      # Save the uploaded cover image in the media folder
+      if (!is.null(input$cover_image_upload)) {
+        cover_image_name <- tools::file_path_sans_ext(input$cover_image_upload$name)
+        cover_image_path <- file.path("media", paste0(cover_image_name, ".png"))
+        if (!file.exists(cover_image_path)) {
+          file.copy(from = input$cover_image_upload$datapath, to = cover_image_path)
+        }
+      }
+
       # Call create_post function
       create_post(
         post_name = input$post_name,
         post_date = format(input$post_date, "%Y-%m-%d"),
         description = input$description,
         author = input$author,
-        cover_image = input$cover_image,
+        cover_images = cover_image_path,  # Use the file path of the uploaded image
         tags = input$tags
       )
       output$created_message <- renderText({
@@ -173,12 +183,9 @@ initiate_blog <- function() {
     })
   }
 
-  #viewer <-dialogViewer(300)
-  runGadget(shinyApp(ui, server), viewer= dialogViewer("Blogging Info"))
-
+  runGadget(shinyApp(ui, server), viewer= dialogViewer("Blogging Setup Information"))
 }
 
 run_blog_skeleton <- function(){
-   initiate_blog()
+  initiate_blog()
 }
-
