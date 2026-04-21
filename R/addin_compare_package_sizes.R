@@ -17,6 +17,41 @@ compare_package_sizes <- function(dev_package_path,
     dir.exists(path) || is_tarball(path)
   }
 
+  resolve_package_input <- function(path, arg_name) {
+    normalized_path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+
+    if (is_tarball(normalized_path)) {
+      return(normalized_path)
+    }
+
+    if (dir.exists(normalized_path)) {
+      tarballs <- list.files(
+        path = normalized_path,
+        pattern = "\\.tar\\.gz$",
+        full.names = TRUE,
+        recursive = FALSE,
+        ignore.case = TRUE
+      )
+      has_description <- file.exists(file.path(normalized_path, "DESCRIPTION"))
+
+      if (!has_description && length(tarballs) == 1) {
+        return(normalizePath(tarballs[[1]], winslash = "/", mustWork = TRUE))
+      }
+
+      if (!has_description && length(tarballs) > 1) {
+        rlang::abort(
+          paste0(
+            "`", arg_name, "` points to a directory with multiple .tar.gz files. ",
+            "Please provide the specific .tar.gz file path."
+          ),
+          class = "pkg_size_validation_error"
+        )
+      }
+    }
+
+    normalized_path
+  }
+
   if (!is_package_input(dev_package_path)) {
     rlang::abort(
       "`dev_package_path` must be an existing directory or a .tar.gz file.",
@@ -37,6 +72,12 @@ compare_package_sizes <- function(dev_package_path,
       class = "pkg_size_validation_error"
     )
   }
+
+  dev_package_path <- resolve_package_input(dev_package_path, "dev_package_path")
+  installed_package_path <- resolve_package_input(
+    installed_package_path,
+    "installed_package_path"
+  )
 
   temp_state <- new.env(parent = emptyenv())
   temp_state$paths <- character()
