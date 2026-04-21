@@ -49,10 +49,25 @@ compare_package_sizes <- function(dev_package_path,
 
     if (is_tar) {
       extract_dir <- tempfile("pkg_compare_")
-      dir.create(extract_dir)
+      created <- dir.create(extract_dir, showWarnings = FALSE, recursive = TRUE)
+      if (!created && !dir.exists(extract_dir)) {
+        rlang::abort(
+          paste("Failed to create temporary extraction directory:", extract_dir),
+          class = "pkg_size_validation_error"
+        )
+      }
       temp_state$paths <- c(temp_state$paths, extract_dir)
 
-      utils::untar(path, exdir = extract_dir)
+      tryCatch(
+        utils::untar(path, exdir = extract_dir),
+        error = function(e) {
+          rlang::abort(
+            paste("Failed to extract .tar.gz package:", path),
+            class = "pkg_size_validation_error",
+            parent = e
+          )
+        }
+      )
       root <- extract_dir
     }
 
@@ -79,6 +94,8 @@ compare_package_sizes <- function(dev_package_path,
     file_info <- file.info(files)
     if (is_tar) {
       relative_paths <- substring(files, nchar(root) + 2L)
+      # .tar.gz packages usually extract into a single top-level versioned folder.
+      # Remove that leading folder so paths align across package versions.
       relative_paths <- sub("^[^/]+/", "", relative_paths)
       file_paths <- paste0(path, "::", substring(files, nchar(root) + 2L))
       root_path <- path
