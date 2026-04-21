@@ -62,12 +62,13 @@ compare_package_sizes <- function(dev_package_path,
 
     files <- normalizePath(files, winslash = "/", mustWork = TRUE)
     file_info <- file.info(files)
-    relative_paths <- substring(files, nchar(root) + 2L)
-    relative_paths <- sub("^[^/]+/", "", relative_paths)
     if (file.exists(path) && grepl("\\.tar\\.gz$", path, ignore.case = TRUE)) {
+      relative_paths <- substring(files, nchar(root) + 2L)
+      relative_paths <- sub("^[^/]+/", "", relative_paths)
       file_paths <- paste0(path, "::", substring(files, nchar(root) + 2L))
       root_path <- path
     } else {
+      relative_paths <- substring(files, nchar(root) + 2L)
       file_paths <- files
       root_path <- root
     }
@@ -165,7 +166,7 @@ run_compare_package_sizes <- function() {
         ),
         error = function(e) {
           if (grepl("must be an existing directory or a .tar.gz file", e$message, fixed = TRUE) ||
-            grepl("`output_dir` must be an existing directory.", e$message, fixed = TRUE)) {
+            grepl("`output_dir` must be an existing directory", e$message, fixed = TRUE)) {
             paste("Validation error:", e$message)
           } else {
             paste("Unexpected error:", e$message)
