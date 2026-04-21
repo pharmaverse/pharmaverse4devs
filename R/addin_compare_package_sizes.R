@@ -35,7 +35,7 @@ compare_package_sizes <- function(dev_package_path,
       has_description <- file.exists(file.path(normalized_path, "DESCRIPTION"))
 
       if (!has_description && length(tarballs) == 1) {
-        return(normalizePath(tarballs[[1]], winslash = "/", mustWork = TRUE))
+        return(tarballs[[1]])
       }
 
       if (!has_description && length(tarballs) > 1) {
