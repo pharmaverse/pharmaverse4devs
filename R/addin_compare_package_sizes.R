@@ -49,8 +49,8 @@ compare_package_sizes <- function(dev_package_path,
 
     if (is_tar) {
       extract_dir <- tempfile("pkg_compare_")
-      created <- dir.create(extract_dir, showWarnings = FALSE, recursive = TRUE)
-      if (!created && !dir.exists(extract_dir)) {
+      dir.create(extract_dir, showWarnings = FALSE, recursive = TRUE)
+      if (!dir.exists(extract_dir)) {
         rlang::abort(
           paste("Failed to create temporary extraction directory:", extract_dir),
           class = "pkg_size_validation_error"
@@ -94,19 +94,22 @@ compare_package_sizes <- function(dev_package_path,
     file_info <- file.info(files)
     if (is_tar) {
       extracted_relative_paths <- substring(files, nchar(root) + 2L)
-      # .tar.gz packages typically extract into a single top-level versioned folder.
-      # Remove that leading folder so paths align across package versions.
-      relative_paths <- vapply(
-        strsplit(extracted_relative_paths, "/", fixed = TRUE),
-        function(parts) {
-          if (length(parts) > 1) {
-            paste(parts[-1], collapse = "/")
-          } else {
-            parts[1]
-          }
-        },
-        character(1)
-      )
+      path_parts <- strsplit(extracted_relative_paths, "/", fixed = TRUE)
+      top_level_dirs <- vapply(path_parts, `[`, character(1), 1)
+      all_nested <- all(vapply(path_parts, length, integer(1)) > 1)
+
+      # If all entries share one common top-level directory, strip it so
+      # versioned archive roots do not affect cross-version path comparisons.
+      if (all_nested && length(unique(top_level_dirs)) == 1) {
+        relative_paths <- vapply(
+          path_parts,
+          function(parts) paste(parts[-1], collapse = "/"),
+          character(1)
+        )
+      } else {
+        relative_paths <- extracted_relative_paths
+      }
+
       file_paths <- paste0(path, "::", extracted_relative_paths)
       root_path <- path
     } else {
