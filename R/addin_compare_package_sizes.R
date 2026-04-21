@@ -5,6 +5,7 @@
 #' @param output_dir Directory where the reports should be written.
 #'
 #' @return Invisible list containing both generated report paths.
+#' @noRd
 compare_package_sizes <- function(dev_package_path,
                                   installed_package_path,
                                   output_dir = path.expand("~")) {
