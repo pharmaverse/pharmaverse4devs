@@ -123,7 +123,7 @@ run_compare_package_sizes <- function() {
     )
   )
 
-  server <- function(input, output, session) {
+  server <- function(input, output) {
     observeEvent(input$create_reports, {
       result <- tryCatch(
         compare_package_sizes(
