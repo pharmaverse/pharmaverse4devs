@@ -9,20 +9,38 @@
 compare_package_sizes <- function(dev_package_path,
                                   installed_package_path,
                                   output_dir = path.expand("~")) {
-  if (!dir.exists(dev_package_path)) {
-    stop("`dev_package_path` must be an existing directory.")
+  is_package_input <- function(path) {
+    dir.exists(path) || (file.exists(path) && grepl("\\.tar\\.gz$", path, ignore.case = TRUE))
   }
 
-  if (!dir.exists(installed_package_path)) {
-    stop("`installed_package_path` must be an existing directory.")
+  if (!is_package_input(dev_package_path)) {
+    stop("`dev_package_path` must be an existing directory or a .tar.gz file.")
+  }
+
+  if (!is_package_input(installed_package_path)) {
+    stop("`installed_package_path` must be an existing directory or a .tar.gz file.")
   }
 
   if (!dir.exists(output_dir)) {
     stop("`output_dir` must be an existing directory.")
   }
 
+  temp_paths <- character()
+  on.exit(unlink(temp_paths, recursive = TRUE, force = TRUE), add = TRUE)
+
   get_file_sizes <- function(path) {
-    root <- normalizePath(path, winslash = "/", mustWork = TRUE)
+    path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+    root <- path
+
+    if (file.exists(path) && grepl("\\.tar\\.gz$", path, ignore.case = TRUE)) {
+      extract_dir <- tempfile("pharmaverse4devs_pkg_")
+      dir.create(extract_dir)
+      temp_paths <<- c(temp_paths, extract_dir)
+
+      utils::untar(path, exdir = extract_dir)
+      root <- extract_dir
+    }
+
     files <- list.files(
       path = root,
       recursive = TRUE,
@@ -45,11 +63,19 @@ compare_package_sizes <- function(dev_package_path,
     files <- normalizePath(files, winslash = "/", mustWork = TRUE)
     file_info <- file.info(files)
     relative_paths <- substring(files, nchar(root) + 2L)
+    relative_paths <- sub("^[^/]+/", "", relative_paths)
+    if (file.exists(path) && grepl("\\.tar\\.gz$", path, ignore.case = TRUE)) {
+      file_paths <- paste0(path, "::", substring(files, nchar(root) + 2L))
+      root_path <- path
+    } else {
+      file_paths <- files
+      root_path <- root
+    }
 
     data.frame(
-      root_path = root,
+      root_path = root_path,
       relative_path = relative_paths,
-      file_path = files,
+      file_path = file_paths,
       file_size_bytes = as.numeric(file_info$size),
       stringsAsFactors = FALSE
     )
@@ -138,7 +164,8 @@ run_compare_package_sizes <- function() {
           output_dir = input$output_dir
         ),
         error = function(e) {
-          if (grepl("must be an existing directory", e$message, fixed = TRUE)) {
+          if (grepl("must be an existing directory or a .tar.gz file", e$message, fixed = TRUE) ||
+            grepl("`output_dir` must be an existing directory.", e$message, fixed = TRUE)) {
             paste("Validation error:", e$message)
           } else {
             paste("Unexpected error:", e$message)
