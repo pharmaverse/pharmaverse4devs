@@ -74,21 +74,21 @@ compare_package_sizes <- function(dev_package_path,
     all = TRUE,
     suffixes = c("_dev", "_installed")
   )
+  comparison_report$dev_exists <- !is.na(comparison_report$file_path_dev)
+  comparison_report$installed_exists <- !is.na(comparison_report$file_path_installed)
   comparison_report$size_diff_bytes <- ifelse(
-    is.na(comparison_report$file_size_bytes_dev),
-    0,
-    comparison_report$file_size_bytes_dev
-  ) - ifelse(
-    is.na(comparison_report$file_size_bytes_installed),
-    0,
-    comparison_report$file_size_bytes_installed
+    comparison_report$dev_exists & comparison_report$installed_exists,
+    comparison_report$file_size_bytes_dev - comparison_report$file_size_bytes_installed,
+    NA_real_
   )
   comparison_report <- comparison_report[
-    order(abs(comparison_report$size_diff_bytes), decreasing = TRUE),
+    order(abs(comparison_report$size_diff_bytes), decreasing = TRUE, na.last = TRUE),
     c(
       "relative_path",
       "file_path_dev",
       "file_path_installed",
+      "dev_exists",
+      "installed_exists",
       "file_size_bytes_dev",
       "file_size_bytes_installed",
       "size_diff_bytes"
