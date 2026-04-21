@@ -4,7 +4,7 @@ Binding: format_test_that_file
 Interactive: false
 
 Name: Initiate Pharmaverse Blog
-Description: Assist in populating some of the required field for Pharmaverse Blog
+Description: Assist in populating some of the required fields for Pharmaverse Blog
 Binding: run_blog_skeleton
 Interactive: false
 

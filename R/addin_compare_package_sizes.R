@@ -131,7 +131,13 @@ run_compare_package_sizes <- function() {
           installed_package_path = input$installed_package_path,
           output_dir = input$output_dir
         ),
-        error = function(e) e$message
+        error = function(e) {
+          if (grepl("must be an existing directory", e$message, fixed = TRUE)) {
+            paste("Validation error:", e$message)
+          } else {
+            paste("Unexpected error:", e$message)
+          }
+        }
       )
 
       output$status <- renderText({
