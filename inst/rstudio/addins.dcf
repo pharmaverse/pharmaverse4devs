@@ -7,3 +7,8 @@ Name: Initiate Pharmaverse Blog
 Description: Assit in populating some of the required field for Pharmaverse Blog
 Binding: run_blog_skeleton
 Interactive: false
+
+Name: Compare package sizes
+Description: Compare file sizes between development and installed package versions
+Binding: run_compare_package_sizes
+Interactive: false
