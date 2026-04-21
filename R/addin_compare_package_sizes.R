@@ -124,6 +124,12 @@ run_compare_package_sizes <- function() {
   )
 
   server <- function(input, output) {
+    status_message <- shiny::reactiveVal("")
+
+    output$status <- renderText({
+      status_message()
+    })
+
     observeEvent(input$create_reports, {
       result <- tryCatch(
         compare_package_sizes(
@@ -140,18 +146,18 @@ run_compare_package_sizes <- function() {
         }
       )
 
-      output$status <- renderText({
-        if (is.list(result)) {
+      if (is.list(result)) {
+        status_message(
           paste0(
             "Reports created:\n",
             result$file_sizes_report,
             "\n",
             result$comparison_report
           )
-        } else {
-          result
-        }
-      })
+        )
+      } else {
+        status_message(result)
+      }
     })
   }
 
