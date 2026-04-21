@@ -155,8 +155,8 @@ run_compare_package_sizes <- function() {
     })
   }
 
-  runGadget(
-    shinyApp(ui, server),
-    viewer = dialogViewer("Compare Package Sizes")
+  shiny::runGadget(
+    shiny::shinyApp(ui, server),
+    viewer = shiny::dialogViewer("Compare Package Sizes")
   )
 }
