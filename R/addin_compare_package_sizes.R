@@ -49,6 +49,7 @@ compare_package_sizes <- function(dev_package_path,
       }
     }
 
+    # Fallback to the provided directory path (e.g., unpacked package directory).
     normalized_path
   }
 
