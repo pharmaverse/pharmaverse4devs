@@ -158,17 +158,25 @@ compare_package_sizes <- function(dev_package_path,
     comparison_report$file_size_bytes_dev - comparison_report$file_size_bytes_installed,
     NA_real_
   )
+  comparison_report$filename <- basename(comparison_report$relative_path)
+  comparison_report$file_size_kb_dev <- round(comparison_report$file_size_bytes_dev / 1024, 2)
+  comparison_report$file_size_kb_installed <- round(comparison_report$file_size_bytes_installed / 1024, 2)
+  comparison_report$size_diff_kb <- round(comparison_report$size_diff_bytes / 1024, 2)
   comparison_report <- comparison_report[
     order(abs(comparison_report$size_diff_bytes), decreasing = TRUE, na.last = TRUE),
     c(
+      "filename",
       "relative_path",
       "file_path_dev",
       "file_path_installed",
       "dev_exists",
       "installed_exists",
       "file_size_bytes_dev",
+      "file_size_kb_dev",
       "file_size_bytes_installed",
-      "size_diff_bytes"
+      "file_size_kb_installed",
+      "size_diff_bytes",
+      "size_diff_kb"
     )
   ]
 
