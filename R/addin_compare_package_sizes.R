@@ -9,33 +9,48 @@
 compare_package_sizes <- function(dev_package_path,
                                   installed_package_path,
                                   output_dir = path.expand("~")) {
+  is_tarball <- function(path) {
+    file.exists(path) && grepl("\\.tar\\.gz$", path, ignore.case = TRUE)
+  }
+
   is_package_input <- function(path) {
-    dir.exists(path) || (file.exists(path) && grepl("\\.tar\\.gz$", path, ignore.case = TRUE))
+    dir.exists(path) || is_tarball(path)
   }
 
   if (!is_package_input(dev_package_path)) {
-    stop("`dev_package_path` must be an existing directory or a .tar.gz file.")
+    rlang::abort(
+      "`dev_package_path` must be an existing directory or a .tar.gz file.",
+      class = "pkg_size_validation_error"
+    )
   }
 
   if (!is_package_input(installed_package_path)) {
-    stop("`installed_package_path` must be an existing directory or a .tar.gz file.")
+    rlang::abort(
+      "`installed_package_path` must be an existing directory or a .tar.gz file.",
+      class = "pkg_size_validation_error"
+    )
   }
 
   if (!dir.exists(output_dir)) {
-    stop("`output_dir` must be an existing directory.")
+    rlang::abort(
+      "`output_dir` must be an existing directory.",
+      class = "pkg_size_validation_error"
+    )
   }
 
-  temp_paths <- character()
-  on.exit(unlink(temp_paths, recursive = TRUE, force = TRUE), add = TRUE)
+  temp_state <- new.env(parent = emptyenv())
+  temp_state$paths <- character()
+  on.exit(unlink(temp_state$paths, recursive = TRUE, force = TRUE), add = TRUE)
 
   get_file_sizes <- function(path) {
     path <- normalizePath(path, winslash = "/", mustWork = TRUE)
     root <- path
+    is_tar <- is_tarball(path)
 
-    if (file.exists(path) && grepl("\\.tar\\.gz$", path, ignore.case = TRUE)) {
-      extract_dir <- tempfile("pharmaverse4devs_pkg_")
+    if (is_tar) {
+      extract_dir <- tempfile("pkg_compare_")
       dir.create(extract_dir)
-      temp_paths <<- c(temp_paths, extract_dir)
+      temp_state$paths <- c(temp_state$paths, extract_dir)
 
       utils::untar(path, exdir = extract_dir)
       root <- extract_dir
@@ -62,7 +77,7 @@ compare_package_sizes <- function(dev_package_path,
 
     files <- normalizePath(files, winslash = "/", mustWork = TRUE)
     file_info <- file.info(files)
-    if (file.exists(path) && grepl("\\.tar\\.gz$", path, ignore.case = TRUE)) {
+    if (is_tar) {
       relative_paths <- substring(files, nchar(root) + 2L)
       relative_paths <- sub("^[^/]+/", "", relative_paths)
       file_paths <- paste0(path, "::", substring(files, nchar(root) + 2L))
@@ -164,14 +179,8 @@ run_compare_package_sizes <- function() {
           installed_package_path = input$installed_package_path,
           output_dir = input$output_dir
         ),
-        error = function(e) {
-          if (grepl("must be an existing directory or a .tar.gz file", e$message, fixed = TRUE) ||
-            grepl("`output_dir` must be an existing directory", e$message, fixed = TRUE)) {
-            paste("Validation error:", e$message)
-          } else {
-            paste("Unexpected error:", e$message)
-          }
-        }
+        pkg_size_validation_error = function(e) paste("Validation error:", e$message),
+        error = function(e) paste("Unexpected error:", e$message)
       )
 
       if (is.list(result)) {
