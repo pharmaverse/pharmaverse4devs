@@ -93,11 +93,11 @@ compare_package_sizes <- function(dev_package_path,
     files <- normalizePath(files, winslash = "/", mustWork = TRUE)
     file_info <- file.info(files)
     if (is_tar) {
-      relative_paths <- substring(files, nchar(root) + 2L)
+      extracted_relative_paths <- substring(files, nchar(root) + 2L)
       # .tar.gz packages usually extract into a single top-level versioned folder.
       # Remove that leading folder so paths align across package versions.
-      relative_paths <- sub("^[^/]+/", "", relative_paths)
-      file_paths <- paste0(path, "::", substring(files, nchar(root) + 2L))
+      relative_paths <- sub("^[^/]+/", "", extracted_relative_paths)
+      file_paths <- paste0(path, "::", extracted_relative_paths)
       root_path <- path
     } else {
       relative_paths <- substring(files, nchar(root) + 2L)
