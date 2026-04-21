@@ -58,7 +58,7 @@ compare_package_sizes <- function(dev_package_path,
       }
       temp_state$paths <- c(temp_state$paths, extract_dir)
 
-      tryCatch(
+      untar_status <- tryCatch(
         utils::untar(path, exdir = extract_dir),
         error = function(e) {
           rlang::abort(
@@ -68,6 +68,12 @@ compare_package_sizes <- function(dev_package_path,
           )
         }
       )
+      if (!identical(untar_status, 0L) && !identical(untar_status, 0)) {
+        rlang::abort(
+          paste("Failed to extract .tar.gz package:", path),
+          class = "pkg_size_validation_error"
+        )
+      }
       root <- extract_dir
     }
 
@@ -96,7 +102,11 @@ compare_package_sizes <- function(dev_package_path,
       extracted_relative_paths <- substring(files, nchar(root) + 2L)
       # .tar.gz packages usually extract into a single top-level versioned folder.
       # Remove that leading folder so paths align across package versions.
-      relative_paths <- sub("^[^/]+/", "", extracted_relative_paths)
+      relative_paths <- ifelse(
+        grepl("/", extracted_relative_paths, fixed = TRUE),
+        sub("^[^/]+/", "", extracted_relative_paths),
+        extracted_relative_paths
+      )
       file_paths <- paste0(path, "::", extracted_relative_paths)
       root_path <- path
     } else {
