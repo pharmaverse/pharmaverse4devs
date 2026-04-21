@@ -95,12 +95,17 @@ compare_package_sizes <- function(dev_package_path,
     if (is_tar) {
       extracted_relative_paths <- substring(files, nchar(root) + 2L)
       path_parts <- strsplit(extracted_relative_paths, "/", fixed = TRUE)
-      top_level_dirs <- vapply(path_parts, `[`, character(1), 1)
-      all_nested <- all(vapply(path_parts, length, integer(1)) > 1)
+      part_lengths <- lengths(path_parts)
+      top_level_dirs <- vapply(
+        path_parts,
+        function(parts) if (length(parts) >= 1) parts[1] else NA_character_,
+        character(1)
+      )
+      unique_top_dirs <- unique(top_level_dirs[!is.na(top_level_dirs)])
 
       # If all entries share one common top-level directory, strip it so
       # versioned archive roots do not affect cross-version path comparisons.
-      if (all_nested && length(unique(top_level_dirs)) == 1) {
+      if (all(part_lengths > 1) && length(unique_top_dirs) == 1) {
         relative_paths <- vapply(
           path_parts,
           function(parts) paste(parts[-1], collapse = "/"),
