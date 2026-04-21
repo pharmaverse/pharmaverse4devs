@@ -15,4 +15,4 @@ devtools::install_github("pharmaverse/pharmaverse4devs")
 ```
 
 ## Scope
-The vision is to have a dedicated package for developer Addins and perhaps other dev utility functions that could be used across pharmaverse packages and projects. {pharmaverse4devs} currently includes addins for `Initiate Pharamverse Blog` (creating blog posts for the pharmaverse blog), `Format test_that test file` (numbering tests in testthat files), and `Compare package sizes` (creating file-size reports for development and installed package versions).
+The vision is to have a dedicated package for developer Addins and perhaps other dev utility functions that could be used across pharmaverse packages and projects. {pharmaverse4devs} currently includes addins for `Initiate Pharmaverse Blog` (creating blog posts for the pharmaverse blog), `Format test_that test file` (numbering tests in testthat files), and `Compare package sizes` (creating file-size reports for development and installed package versions).
