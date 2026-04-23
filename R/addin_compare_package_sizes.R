@@ -297,9 +297,7 @@ run_compare_package_sizes <- function() {
             "Reports created:\n",
             result$file_sizes_report,
             "\n",
-            result$comparison_report,
-            "\n",
-            result$totals_report
+            result$comparison_report
           )
         )
       } else {
