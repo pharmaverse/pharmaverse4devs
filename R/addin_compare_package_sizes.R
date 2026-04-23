@@ -176,6 +176,8 @@ compare_package_sizes <- function(dev_package_path,
 
   dev_files <- get_file_sizes(dev_package_path)
   installed_files <- get_file_sizes(installed_package_path)
+  dev_input_is_tar <- is_tarball(dev_package_path)
+  installed_input_is_tar <- is_tarball(installed_package_path)
 
   file_sizes_report <- rbind(
     transform(dev_files, package_version = "development"),
@@ -225,9 +227,23 @@ compare_package_sizes <- function(dev_package_path,
   dev_total_size_bytes <- sum(dev_files$file_size_bytes)
   installed_total_size_bytes <- sum(installed_files$file_size_bytes)
   totals_diff <- dev_total_size_bytes - installed_total_size_bytes
+  dev_input_size_bytes <- if (dev_input_is_tar) file.info(dev_package_path)$size else dev_total_size_bytes
+  installed_input_size_bytes <- if (installed_input_is_tar) {
+    file.info(installed_package_path)$size
+  } else {
+    installed_total_size_bytes
+  }
+  input_size_diff <- dev_input_size_bytes - installed_input_size_bytes
 
   totals_report <- data.frame(
     package_version = c("development", "installed"),
+    input_type = c(
+      if (dev_input_is_tar) "tar.gz" else "directory",
+      if (installed_input_is_tar) "tar.gz" else "directory"
+    ),
+    input_size_bytes = c(dev_input_size_bytes, installed_input_size_bytes),
+    input_size_kb = round(c(dev_input_size_bytes, installed_input_size_bytes) / 1024, 2),
+    input_size_mb = round(c(dev_input_size_bytes, installed_input_size_bytes) / (1024^2), 2),
     total_size_bytes = c(dev_total_size_bytes, installed_total_size_bytes),
     total_size_kb = round(c(dev_total_size_bytes, installed_total_size_bytes) / 1024, 2),
     total_size_mb = round(c(dev_total_size_bytes, installed_total_size_bytes) / (1024^2), 2),
@@ -237,6 +253,10 @@ compare_package_sizes <- function(dev_package_path,
     totals_report,
     data.frame(
       package_version = "diff_development_minus_installed",
+      input_type = "difference",
+      input_size_bytes = input_size_diff,
+      input_size_kb = round(input_size_diff / 1024, 2),
+      input_size_mb = round(input_size_diff / (1024^2), 2),
       total_size_bytes = totals_diff,
       total_size_kb = round(totals_diff / 1024, 2),
       total_size_mb = round(totals_diff / (1024^2), 2),
