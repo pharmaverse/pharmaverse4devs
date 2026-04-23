@@ -4,7 +4,7 @@
 #' @param installed_package_path Path to the installed package (for example from CRAN).
 #' @param output_dir Directory where the reports should be written.
 #'
-#' @return Invisible list containing both generated report paths.
+#' @return Invisible list containing generated report paths.
 #' @noRd
 compare_package_sizes <- function(dev_package_path,
                                   installed_package_path,
@@ -222,16 +222,38 @@ compare_package_sizes <- function(dev_package_path,
     )
   ]
 
+  totals_report <- data.frame(
+    package_version = c("development", "installed"),
+    total_size_bytes = c(sum(dev_files$file_size_bytes), sum(installed_files$file_size_bytes)),
+    stringsAsFactors = FALSE
+  )
+  totals_report$total_size_kb <- round(totals_report$total_size_bytes / 1024, 2)
+
+  totals_diff <- totals_report$total_size_bytes[totals_report$package_version == "development"] -
+    totals_report$total_size_bytes[totals_report$package_version == "installed"]
+  totals_report <- rbind(
+    totals_report,
+    data.frame(
+      package_version = "diff_development_minus_installed",
+      total_size_bytes = totals_diff,
+      total_size_kb = round(totals_diff / 1024, 2),
+      stringsAsFactors = FALSE
+    )
+  )
+
   timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
   file_sizes_report_path <- file.path(output_dir, paste0("package_file_sizes_", timestamp, ".csv"))
   comparison_report_path <- file.path(output_dir, paste0("package_size_comparison_", timestamp, ".csv"))
+  totals_report_path <- file.path(output_dir, paste0("package_size_totals_", timestamp, ".csv"))
 
   write.csv(file_sizes_report, file_sizes_report_path, row.names = FALSE)
   write.csv(comparison_report, comparison_report_path, row.names = FALSE)
+  write.csv(totals_report, totals_report_path, row.names = FALSE)
 
   invisible(list(
     file_sizes_report = file_sizes_report_path,
-    comparison_report = comparison_report_path
+    comparison_report = comparison_report_path,
+    totals_report = totals_report_path
   ))
 }
 
@@ -274,7 +296,9 @@ run_compare_package_sizes <- function() {
             "Reports created:\n",
             result$file_sizes_report,
             "\n",
-            result$comparison_report
+            result$comparison_report,
+            "\n",
+            result$totals_report
           )
         )
       } else {
