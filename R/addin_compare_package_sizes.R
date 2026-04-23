@@ -222,15 +222,16 @@ compare_package_sizes <- function(dev_package_path,
     )
   ]
 
+  dev_total_size_bytes <- sum(dev_files$file_size_bytes)
+  installed_total_size_bytes <- sum(installed_files$file_size_bytes)
+  totals_diff <- dev_total_size_bytes - installed_total_size_bytes
+
   totals_report <- data.frame(
     package_version = c("development", "installed"),
-    total_size_bytes = c(sum(dev_files$file_size_bytes), sum(installed_files$file_size_bytes)),
+    total_size_bytes = c(dev_total_size_bytes, installed_total_size_bytes),
+    total_size_kb = round(c(dev_total_size_bytes, installed_total_size_bytes) / 1024, 2),
     stringsAsFactors = FALSE
   )
-  totals_report$total_size_kb <- round(totals_report$total_size_bytes / 1024, 2)
-
-  totals_diff <- totals_report$total_size_bytes[totals_report$package_version == "development"] -
-    totals_report$total_size_bytes[totals_report$package_version == "installed"]
   totals_report <- rbind(
     totals_report,
     data.frame(
