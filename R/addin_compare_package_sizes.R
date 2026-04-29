@@ -301,13 +301,48 @@ run_compare_package_sizes <- function() {
   server <- function(input, output, session) {
     status_message <- shiny::reactiveVal("")
 
-    browse_for_package_input <- function(current_value, dialog_caption) {
+    browse_for_directory <- function(current_value, dialog_caption) {
       if (!rstudioapi::isAvailable()) {
         status_message("RStudio path chooser is unavailable. Enter paths manually.")
         return(NULL)
       }
-      if (!rstudioapi::hasFun("selectFile")) {
-        status_message("RStudio file chooser is unavailable. Enter paths manually.")
+
+      default_dir <- if (nzchar(current_value) && file.exists(current_value)) {
+        if (dir.exists(current_value)) current_value else dirname(current_value)
+      } else {
+        path.expand("~")
+      }
+
+      selected_dir <- if (rstudioapi::hasFun("selectDirectory")) {
+        rstudioapi::selectDirectory(
+          caption = dialog_caption,
+          path = default_dir
+        )
+      } else if (rstudioapi::hasFun("selectFile")) {
+        selected_file <- rstudioapi::selectFile(
+          caption = "Select a file in the desired directory",
+          path = default_dir
+        )
+        if (nzchar(selected_file)) dirname(selected_file) else ""
+      } else {
+        status_message("RStudio directory chooser is unavailable. Enter paths manually.")
+        ""
+      }
+
+      if (nzchar(selected_dir)) {
+        return(selected_dir)
+      }
+
+      NULL
+    }
+
+    browse_for_package_input <- function(current_value, dialog_caption) {
+      selected_dir <- browse_for_directory(current_value, dialog_caption)
+      if (!is.null(selected_dir)) {
+        return(selected_dir)
+      }
+
+      if (!rstudioapi::isAvailable() || !rstudioapi::hasFun("selectFile")) {
         return(NULL)
       }
 
@@ -324,19 +359,6 @@ run_compare_package_sizes <- function() {
 
       if (nzchar(selected_file)) {
         return(selected_file)
-      }
-
-      selected_dir <- if (rstudioapi::hasFun("selectDirectory")) {
-        rstudioapi::selectDirectory(
-          caption = dialog_caption,
-          path = default_dir
-        )
-      } else {
-        ""
-      }
-
-      if (nzchar(selected_dir)) {
-        return(selected_dir)
       }
 
       NULL
@@ -367,34 +389,11 @@ run_compare_package_sizes <- function() {
     })
 
     observeEvent(input$browse_output_dir, {
-      if (!rstudioapi::isAvailable()) {
-        status_message("RStudio directory chooser is unavailable. Enter paths manually.")
-        return()
-      }
-
-      default_dir <- if (nzchar(input$output_dir) && dir.exists(input$output_dir)) {
-        input$output_dir
-      } else {
-        path.expand("~")
-      }
-
-      selected_dir <- if (rstudioapi::hasFun("selectDirectory")) {
-        rstudioapi::selectDirectory(
-          caption = "Select report output directory",
-          path = default_dir
-        )
-      } else if (rstudioapi::hasFun("selectFile")) {
-        selected_file <- rstudioapi::selectFile(
-          caption = "Select a file in the desired output directory",
-          path = default_dir
-        )
-        if (nzchar(selected_file)) dirname(selected_file) else ""
-      } else {
-        status_message("RStudio directory chooser is unavailable. Enter paths manually.")
-        ""
-      }
-
-      if (nzchar(selected_dir)) {
+      selected_dir <- browse_for_directory(
+        input$output_dir,
+        "Select report output directory"
+      )
+      if (!is.null(selected_dir)) {
         shiny::updateTextInput(session, "output_dir", value = selected_dir)
       }
     })
