@@ -307,7 +307,7 @@ run_compare_package_sizes <- function() {
       )
     } else if (rstudioapi::hasFun("selectFile")) {
       selected_file <- rstudioapi::selectFile(
-        caption = "Select a file in the desired directory",
+        caption = paste0(dialog_caption, " (select any file in the desired directory)"),
         path = default_dir
       )
       if (nzchar(selected_file)) dirname(selected_file) else ""
@@ -329,7 +329,7 @@ run_compare_package_sizes <- function() {
       return(selected_dir)
     }
 
-    if (!rstudioapi::isAvailable() || !rstudioapi::hasFun("selectFile")) {
+    if (!rstudioapi::hasFun("selectFile")) {
       return(NULL)
     }
 
