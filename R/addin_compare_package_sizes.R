@@ -324,9 +324,9 @@ run_compare_package_sizes <- function() {
   }
 
   browse_for_package_input <- function(current_value, dialog_caption, status_setter) {
-    selected_dir <- browse_for_directory(current_value, dialog_caption, status_setter)
-    if (!is.null(selected_dir)) {
-      return(selected_dir)
+    selected_path <- browse_for_directory(current_value, dialog_caption, status_setter)
+    if (!is.null(selected_path)) {
+      return(selected_path)
     }
 
     if (!rstudioapi::hasFun("selectFile")) {
