@@ -284,119 +284,22 @@ compare_package_sizes <- function(dev_package_path,
 #'
 #' @export
 run_compare_package_sizes <- function() {
-  default_browse_dir <- function(current_value) {
-    if (nzchar(current_value) && file.exists(current_value)) {
-      if (dir.exists(current_value)) current_value else dirname(current_value)
-    } else {
-      path.expand("~")
-    }
-  }
-
-  browse_for_directory <- function(current_value, dialog_caption, status_setter) {
-    if (!rstudioapi::isAvailable()) {
-      status_setter("RStudio path chooser is unavailable. Enter paths manually.")
-      return(NULL)
-    }
-
-    default_dir <- default_browse_dir(current_value)
-
-    selected_dir <- if (rstudioapi::hasFun("selectDirectory")) {
-      rstudioapi::selectDirectory(
-        caption = dialog_caption,
-        path = default_dir
-      )
-    } else if (rstudioapi::hasFun("selectFile")) {
-      selected_file <- rstudioapi::selectFile(
-        caption = paste0(dialog_caption, " (select any file in the desired directory)"),
-        path = default_dir
-      )
-      if (nzchar(selected_file)) dirname(selected_file) else ""
-    } else {
-      status_setter("RStudio directory chooser is unavailable. Enter paths manually.")
-      ""
-    }
-
-    if (nzchar(selected_dir)) {
-      return(selected_dir)
-    }
-
-    NULL
-  }
-
-  browse_for_package_input <- function(current_value, dialog_caption, status_setter) {
-    selected_path <- browse_for_directory(current_value, dialog_caption, status_setter)
-    if (!is.null(selected_path)) {
-      return(selected_path)
-    }
-
-    if (!rstudioapi::hasFun("selectFile")) {
-      return(NULL)
-    }
-
-    selected_file <- rstudioapi::selectFile(
-      caption = dialog_caption,
-      path = default_browse_dir(current_value)
-    )
-
-    if (nzchar(selected_file)) {
-      return(selected_file)
-    }
-
-    NULL
-  }
-
   ui <- fluidPage(
     titlePanel("Compare Package File Sizes"),
     mainPanel(
       textInput("dev_package_path", "Development package path:"),
-      actionButton("browse_dev_package_path", "Browse development path"),
       textInput("installed_package_path", "Installed package path:"),
-      actionButton("browse_installed_package_path", "Browse installed path"),
       textInput("output_dir", "Report output directory:", value = path.expand("~")),
-      actionButton("browse_output_dir", "Browse output directory"),
       actionButton("create_reports", "Create reports"),
       textOutput("status")
     )
   )
 
-  server <- function(input, output, session) {
+  server <- function(input, output) {
     status_message <- shiny::reactiveVal("")
 
     output$status <- renderText({
       status_message()
-    })
-
-    observeEvent(input$browse_dev_package_path, {
-      selected_path <- browse_for_package_input(
-        input$dev_package_path,
-        "Select development package path",
-        status_message
-      )
-      if (!is.null(selected_path)) {
-        shiny::updateTextInput(session, "dev_package_path", value = selected_path)
-      }
-    })
-
-    observeEvent(input$browse_installed_package_path, {
-      selected_path <- browse_for_package_input(
-        input$installed_package_path,
-        "Select installed package path",
-        status_message
-      )
-      if (!is.null(selected_path)) {
-        shiny::updateTextInput(session, "installed_package_path", value = selected_path)
-      }
-    })
-
-    observeEvent(input$browse_output_dir, {
-      selected_dir <- browse_for_directory(
-        input$output_dir,
-        "Select report output directory",
-        status_message
-      )
-      if (!is.null(selected_dir)) {
-        shiny::updateTextInput(session, "output_dir", value = selected_dir)
-      }
     })
 
     observeEvent(input$create_reports, {
